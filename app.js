@@ -10,15 +10,21 @@ import cors from "cors";
 import { v2 as cloudinary } from "cloudinary";
 import { corsOptions } from "./constants/config.js";
 import { socketAuthenticator } from "./middlewares/auth.js";
-import { CHAT_JOINED, CHAT_LEAVED, NEW_MESSAGE, NEW_MESSAGE_ALERT, ONLINE_USERS, START_TYPING, STOP_TYPING } from "./constants/events.js";
+import {
+  CHAT_JOINED,
+  CHAT_LEAVED,
+  NEW_MESSAGE,
+  NEW_MESSAGE_ALERT,
+  ONLINE_USERS,
+  START_TYPING,
+  STOP_TYPING,
+} from "./constants/events.js";
 import { getSockets } from "./lib/helper.js";
 import { Message } from "./models/message.js";
-
 
 import adminRoute from "./routes/admin.js";
 import chatRoute from "./routes/chat.js";
 import userRoute from "./routes/user.js";
-
 
 dotenv.config({
   path: "./.env",
@@ -45,7 +51,7 @@ const io = new Server(server, {
   cors: corsOptions,
 });
 
-app.set("io",io);
+app.set("io", io);
 
 app.use(express.json());
 app.use(cookieParser());
@@ -60,17 +66,17 @@ app.get("/", (req, res) => {
 });
 
 io.use((socket, next) => {
-  cookieParser()(socket.request, socket.request.res, async (err) => {
-    await socketAuthenticator(err, socket, next);
-  });
+  cookieParser()(
+    socket.request,
+    socket.request.res,
+    async (err) => await socketAuthenticator(err, socket, next)
+  );
 });
 
 io.on("connection", (socket) => {
   const user = socket.user;
 
   userSocketIDs.set(user._id.toString(), socket.id);
-
-
 
   socket.on(NEW_MESSAGE, async ({ chatId, members, message }) => {
     const messageForRealTime = {
@@ -106,32 +112,30 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on(START_TYPING,({members,chatId})=>{
-
+  socket.on(START_TYPING, ({ members, chatId }) => {
     const membersSocket = getSockets(members);
 
-    socket.to(membersSocket).emit(START_TYPING,{chatId});
+    socket.to(membersSocket).emit(START_TYPING, { chatId });
   });
 
-  socket.on(STOP_TYPING,({members,chatId})=>{
-
+  socket.on(STOP_TYPING, ({ members, chatId }) => {
     const membersSocket = getSockets(members);
 
-    socket.to(membersSocket).emit(STOP_TYPING,{chatId});
+    socket.to(membersSocket).emit(STOP_TYPING, { chatId });
   });
 
-  socket.on(CHAT_JOINED, ({userId,members})=>{
+  socket.on(CHAT_JOINED, ({ userId, members }) => {
     onlineUsers.add(userId.toString());
 
     const membersSocket = getSockets(members);
-    io.to(membersSocket).emit(ONLINE_USERS,Array.from(onlineUsers));
+    io.to(membersSocket).emit(ONLINE_USERS, Array.from(onlineUsers));
   });
 
-  socket.on(CHAT_LEAVED, ({userId,members})=>{
+  socket.on(CHAT_LEAVED, ({ userId, members }) => {
     onlineUsers.delete(userId.toString());
 
     const membersSocket = getSockets(members);
-    io.to(membersSocket).emit(ONLINE_USERS,Array.from(onlineUsers));
+    io.to(membersSocket).emit(ONLINE_USERS, Array.from(onlineUsers));
   });
 
   socket.on("disconnect", () => {
